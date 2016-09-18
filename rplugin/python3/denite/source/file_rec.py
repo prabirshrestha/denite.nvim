@@ -6,7 +6,7 @@
 
 from .base import Base
 import subprocess
-
+import os
 
 class Source(Base):
 
@@ -26,10 +26,20 @@ class Source(Base):
 
     def gather_candidates(self, context):
         if not self.vars['command']:
-            self.vars['command'] = [
-                'find', '-L', context['__directory'],
-                '-path', '*/.git/*', '-prune', '-o',
-                '-type', 'l', '-print', '-o', '-type', 'f', '-print']
+            if os.name == 'nt':
+                self.vars['command'] = [
+                    'cmd',
+                    '/c',
+                    'dir',
+                    '/s',
+                    '/b',
+                    os.path.normpath(context['__directory'])
+                ]
+            else:
+                self.vars['command'] = [
+                    'find', '-L', context['__directory'],
+                    '-path', '*/.git/*', '-prune', '-o',
+                    '-type', 'l', '-print', '-o', '-type', 'f', '-print']
         else:
             self.vars['command'].append(context['__directory'])
         proc = subprocess.Popen(self.vars['command'],
@@ -41,4 +51,4 @@ class Source(Base):
             proc.kill()
             outs, errs = proc.communicate()
         return [{'word': x, 'action__path': x}
-                for x in outs.decode('utf-8').split('\n') if x != '']
+                for x in outs.decode('utf-8').split(os.name == 'nt' ? '\r\n' : '\n') if x != '']
